@@ -6,7 +6,14 @@ Prototype:
 
 `core.nlm_hip.NLMeans(clip clip[, int d = 1, int a = 2, int s = 4, float h = 1.2, string channels = "AUTO", int wmode = 0, float wref = 1.0, clip rclip = None, int device_id = 0, int num_streams = 1])`
 
-## Compilation
+## Installation
+
+AUR package
+```bash
+yay -S vapoursynth-plugin-nlm-hip-git
+```
+
+## Manual Compilation
 ```bash
 CMAKE_PREFIX_PATH=/opt/rocm \
 CXX=/opt/rocm/llvm/bin/clang++ \

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.22.0)
 
 project(vs-nlm-hip VERSION 0.1 LANGUAGES HIP CXX)
 
-# Find the HIP package so we can use its exported targets for the CXX compiler
 find_package(hip REQUIRED)
 
 add_library(vsnlm_hip SHARED
@@ -19,35 +18,23 @@ set_target_properties(vsnlm_hip PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
-# This is the critical line: it passes the HIP include directories (like /opt/rocm/include) 
-# to the CXX compilation phase of source.cpp
 target_link_libraries(vsnlm_hip PRIVATE hip::host)
 
 find_package(PkgConfig QUIET MODULE)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(PKG_CONFIG_FOUND)
     pkg_search_module(VS vapoursynth)
-
     if(VS_FOUND)
-        message(STATUS "Found VapourSynth r${VS_VERSION}")
-
-        cmake_path(APPEND install_dir ${VS_LIBDIR} vapoursynth)
+        message(STATUS "Found VapourSynth R${VS_VERSION}")
+        execute_process(
+            COMMAND "${Python3_EXECUTABLE}" -c "import vapoursynth; print(vapoursynth.get_plugin_dir())"
+            OUTPUT_VARIABLE VS_PLUGIN_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
         target_include_directories(vsnlm_hip PRIVATE ${VS_INCLUDE_DIRS})
-
-        install(TARGETS vsnlm_hip LIBRARY DESTINATION ${install_dir})
+        install(TARGETS vsnlm_hip LIBRARY DESTINATION ${VS_PLUGIN_DIR})
     endif()
-endif()
-
-if(NOT VS_FOUND)
-    set(VS_INCLUDE_DIR "" CACHE PATH "Path to VapourSynth headers")
-
-    if(VS_INCLUDE_DIR STREQUAL "")
-        message(WARNING "VapourSynth not found")
-    endif()
-
-    target_include_directories(vsnlm_hip PRIVATE ${VS_INCLUDE_DIR})
-
-    install(TARGETS vsnlm_hip LIBRARY RUNTIME)
 endif()
 
 find_package(Git QUIET)
