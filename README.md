@@ -8,6 +8,11 @@ Prototype:
 
 ## Installation
 
+PyPi package
+```bash
+pip install vapoursynth-nlm-hip
+```
+
 AUR package
 ```bash
 yay -S vapoursynth-plugin-nlm-hip-git

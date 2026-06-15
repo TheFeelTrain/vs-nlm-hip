@@ -31,10 +31,11 @@ tag-pattern = '^v(?P<version>.*)$'
 include = ["source", "CMakeLists.txt"]
 
 [tool.hatch.build.targets.wheel]
-include = ["vapoursynth/plugins"]
+include = ["vapoursynth/plugins/nlm_hip"]
 artifacts = [
     "vapoursynth/plugins/**/*.so",
     "vapoursynth/plugins/**/*.dll",
+    "vapoursynth/plugins/**/manifest.vs"
 ]
 
 [tool.hatch.build.targets.wheel.hooks.custom]

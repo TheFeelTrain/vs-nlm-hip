@@ -61,6 +61,7 @@ jobs:
         -D CMAKE_BUILD_TYPE=Release
         -D CMAKE_CXX_FLAGS="-ffast-math"
         -D CMAKE_HIP_ARCHITECTURES="gfx1010;gfx1011;gfx1012;gfx1030;gfx1031;gfx1032;gfx1033;gfx1034;gfx1035;gfx1036;gfx1100;gfx1101;gfx1102;gfx1103;gfx1200;gfx1201"
+        -D GPU_TARGETS="gfx1010;gfx1011;gfx1012;gfx1030;gfx1031;gfx1032;gfx1033;gfx1034;gfx1035;gfx1036;gfx1100;gfx1101;gfx1102;gfx1103;gfx1200;gfx1201"
 
     - name: Build
       run: cmake --build build --config Release --verbose

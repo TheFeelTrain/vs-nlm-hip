@@ -13,12 +13,13 @@ class CustomHook(BuildHookInterface[Any]):
     else:
         source_dir = Path("install/lib")
 
-    target_dir = Path("vapoursynth/plugins")
+    target_dir = Path("vapoursynth/plugins/nlm_hip")
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
         build_data["pure_python"] = False
         build_data["tag"] = f"py3-none-{next(tags.platform_tags())}"
         self.target_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2("install/manifest.vs", self.target_dir)
         for file_path in self.source_dir.glob("*"):
             if file_path.is_file() and file_path.suffix in [".dll", ".so"]:
                 shutil.copy2(file_path, self.target_dir)
