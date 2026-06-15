@@ -39,8 +39,7 @@ static void distance_horizontal(
     };
 
     extern __shared__ float local_buffer[]; // shape: (block_h, results_per_thread * block_w + 2 * nlm_s)
-    // ignores bank conflicts here for higher occupancy
-    // at most (32 / blockDim.x) smem requests generated per instruction
+    
     int local_buffer_stride = results_per_thread * blockDim.x + 2 * block_radius;
 
     auto clamp_x = [width](int coord) { return min(max(coord, 0), width - 1); };
@@ -103,7 +102,8 @@ static void distance_horizontal(
         }
     }
 
-    __syncwarp();
+    // Changed from __syncwarp() to avoid hardware-specific wavefront/warp sizing races in shared memory
+    __syncthreads();
 
     int x = blockIdx.x * results_per_thread * blockDim.x + threadIdx.x;
     int local_x = threadIdx.x + block_radius;
@@ -128,12 +128,12 @@ static void distance_horizontal_dispatch(
     int width, int height, int image_stride, int buffer_stride,
     int offset_x, int offset_y,
     int block_radius, ChannelMode channels,
-    dim3 grid, dim3 block, size_t dyn_smem_size, cudaStream_t stream,
+    dim3 grid, dim3 block, size_t dyn_smem_size, hipStream_t stream,
     bool is_float, int bits_per_sample
 ) {
     if (is_float) {
         if (bits_per_sample == 32) {
-            distance_horizontal<float, results_per_thread><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(distance_horizontal<float, results_per_thread>), grid, block, dyn_smem_size, stream,
                 buffer,
                 static_cast<const float *>(src) + src_offset,
                 static_cast<const float *>(src) + neighbor_src_offset,
@@ -146,7 +146,7 @@ static void distance_horizontal_dispatch(
         float inv_divisor = 1.0f / ((1 << bits_per_sample) - 1);
 
         if (bits_per_sample <= 8) {
-            distance_horizontal<uint8_t, results_per_thread><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(distance_horizontal<uint8_t, results_per_thread>), grid, block, dyn_smem_size, stream,
                 buffer,
                 static_cast<const uint8_t *>(src) + src_offset,
                 static_cast<const uint8_t *>(src) + neighbor_src_offset,
@@ -155,7 +155,7 @@ static void distance_horizontal_dispatch(
                 block_radius, channels, inv_divisor
             );
         } else if (bits_per_sample <= 16) {
-            distance_horizontal<uint16_t, results_per_thread><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(distance_horizontal<uint16_t, results_per_thread>), grid, block, dyn_smem_size, stream,
                 buffer,
                 static_cast<const uint16_t *>(src) + src_offset,
                 static_cast<const uint16_t *>(src) + neighbor_src_offset,
@@ -273,12 +273,12 @@ static void accumulation_dispatch(
     int width, int height, int image_stride, int buffer_stride,
     int offset_x, int offset_y, int offset_t,
     int num_planes,
-    dim3 grid, dim3 block, size_t dyn_smem_size, cudaStream_t stream,
+    dim3 grid, dim3 block, size_t dyn_smem_size, hipStream_t stream,
     bool is_float, int bits_per_sample
 ) {
     if (is_float) {
         if (bits_per_sample == 32) {
-            accumulation<float><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(accumulation<float>), grid, block, dyn_smem_size, stream,
                 wdst,
                 weight,
                 max_weight,
@@ -292,7 +292,7 @@ static void accumulation_dispatch(
         }
     } else {
         if (bits_per_sample <= 8) {
-            accumulation<uint8_t><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(accumulation<uint8_t>), grid, block, dyn_smem_size, stream,
                 wdst,
                 weight,
                 max_weight,
@@ -304,7 +304,7 @@ static void accumulation_dispatch(
                 num_planes
             );
         } else if (bits_per_sample <= 16) {
-            accumulation<uint16_t><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(accumulation<uint16_t>), grid, block, dyn_smem_size, stream,
                 wdst,
                 weight,
                 max_weight,
@@ -365,12 +365,12 @@ static void finish_dispatch(
     const float * max_weight,
     int width, int height, int image_stride, int buffer_stride,
     int num_planes, float wref,
-    dim3 grid, dim3 block, size_t dyn_smem_size, cudaStream_t stream,
+    dim3 grid, dim3 block, size_t dyn_smem_size, hipStream_t stream,
     bool is_float, int bits_per_sample
 ) {
     if (is_float) {
         if (bits_per_sample == 32) {
-            finish<float><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(finish<float>), grid, block, dyn_smem_size, stream,
                 static_cast<float *>(dst),
                 static_cast<const float *>(src) + src_offset,
                 wdst,
@@ -384,7 +384,7 @@ static void finish_dispatch(
         int peak = (1 << bits_per_sample) - 1;
 
         if (bits_per_sample <= 8) {
-            finish<uint8_t><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(finish<uint8_t>), grid, block, dyn_smem_size, stream,
                 static_cast<uint8_t *>(dst),
                 static_cast<const uint8_t *>(src) + src_offset,
                 wdst,
@@ -394,7 +394,7 @@ static void finish_dispatch(
                 num_planes, wref, peak
             );
         } else if (bits_per_sample <= 16) {
-            finish<uint16_t><<<grid, block, dyn_smem_size, stream>>>(
+            hipLaunchKernelGGL(HIP_KERNEL_NAME(finish<uint16_t>), grid, block, dyn_smem_size, stream,
                 static_cast<uint16_t *>(dst),
                 static_cast<const uint16_t *>(src) + src_offset,
                 wdst,
@@ -407,7 +407,7 @@ static void finish_dispatch(
     }
 }
 
-cudaError_t nlmeans(
+hipError_t nlmeans(
     void * d_dst,
     void * d_src,
     float * d_buffer,
@@ -421,7 +421,7 @@ cudaError_t nlmeans(
     int width, int height, int image_stride, int buffer_stride,
     int radius, int spatial_radius, int block_radius, float h2_inv_norm,
     ChannelMode channels, int wmode, float wref, bool has_ref,
-    cudaStream_t stream
+    hipStream_t stream
 ) {
 
     int num_planes {};
@@ -433,18 +433,17 @@ cudaError_t nlmeans(
         num_planes = 3;
     }
 
-    if (auto error = cudaMemsetAsync(d_wdst, 0, num_planes * height * buffer_stride * sizeof(float), stream); error != cudaSuccess) {
+    if (auto error = hipMemsetAsync(d_wdst, 0, num_planes * height * buffer_stride * sizeof(float), stream); error != hipSuccess) {
         return error;
     }
-    if (auto error = cudaMemsetAsync(d_weight, 0, height * buffer_stride * sizeof(float), stream); error != cudaSuccess) {
+    if (auto error = hipMemsetAsync(d_weight, 0, height * buffer_stride * sizeof(float), stream); error != hipSuccess) {
         return error;
     }
-    if (auto error = cudaMemsetAsync(d_max_weight, 0, height * buffer_stride * sizeof(float), stream); error != cudaSuccess) {
+    if (auto error = hipMemsetAsync(d_max_weight, 0, height * buffer_stride * sizeof(float), stream); error != hipSuccess) {
         return error;
     }
 
     dim3 block { 16, 8, 1 };
-    // assert(block.x * block.y == 128);
 
     dim3 grid { (width + block.x - 1) / block.x, (height + block.y - 1) / block.y, 1 };
 
@@ -476,7 +475,7 @@ cudaError_t nlmeans(
                     is_float, bits_per_sample
                 );
 
-                vertical<vrt_result><<<vrt_grid, block, vrt_smem, stream>>>(
+                hipLaunchKernelGGL(HIP_KERNEL_NAME(vertical<vrt_result>), vrt_grid, block, vrt_smem, stream,
                     d_buffer_bwd,
                     d_buffer,
                     width, height, buffer_stride,
@@ -509,7 +508,7 @@ cudaError_t nlmeans(
                     is_float, bits_per_sample
                 );
 
-                vertical<vrt_result><<<vrt_grid, block, vrt_smem, stream>>>(
+                hipLaunchKernelGGL(HIP_KERNEL_NAME(vertical<vrt_result>), vrt_grid, block, vrt_smem, stream,
                     d_buffer_fwd,
                     d_buffer,
                     width, height, buffer_stride,
@@ -540,5 +539,5 @@ cudaError_t nlmeans(
         is_float, bits_per_sample
     );
 
-    return cudaSuccess;
+    return hipSuccess;
 }

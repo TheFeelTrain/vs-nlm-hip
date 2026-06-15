@@ -3,17 +3,16 @@ requires = ["hatchling>=1.29.0", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vapoursynth-nlm-cuda"
+name = "vapoursynth-nlm-hip"
 dynamic = ["version"]
-description = "Non-local means denoise filter in CUDA, drop-in replacement of the KNLMeansCL for VapourSynth"
+description = "Non-local means denoise filter in HIP, drop-in replacement of the KNLMeansCL for VapourSynth"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-authors = [{ name = "WolframRhodium" }]
+authors = [{ name = "TheFeelTrain" }]
 maintainers = [
-    { name = "WolframRhodium" },
-    { name = "Vardë", email = "ichunjo.le.terrible@gmail.com" },
+    { name = "TheFeelTrain", email = "the@feeltra.in" }
 ]
 dependencies = ["vapoursynth>=74"]
 
@@ -21,8 +20,8 @@ dependencies = ["vapoursynth>=74"]
 dev = ["hatchling>=1.27.0", "packaging"]
 
 [project.urls]
-"Source Code" = "https://github.com/AmusementClub/vs-nlm-cuda"
-"Bug Tracker" = "https://github.com/AmusementClub/vs-nlm-cuda/issues"
+"Source Code" = "https://github.com/TheFeelTrain/vs-nlm-hip"
+"Bug Tracker" = "https://github.com/TheFeelTrain/vs-nlm-hip/issues"
 
 [tool.hatch.version]
 source = "vcs"
