@@ -37,6 +37,18 @@ if(PKG_CONFIG_FOUND)
     endif()
 endif()
 
+if(NOT VS_FOUND)
+    set(VS_INCLUDE_DIR "" CACHE PATH "Path to VapourSynth headers")
+
+    if(VS_INCLUDE_DIR STREQUAL "")
+        message(WARNING "VapourSynth not found")
+    endif()
+
+    target_include_directories(vsnlm_hip PRIVATE ${VS_INCLUDE_DIR})
+
+    install(TARGETS vsnlm_hip LIBRARY RUNTIME)
+endif()
+
 find_package(Git QUIET)
 
 if(GIT_FOUND)

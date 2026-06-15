@@ -6,6 +6,7 @@ on:
       - 'CMakeLists.txt'
       - 'source/*'
       - '.github/workflows/linux.yml'
+      - '.github/actions/setup-hip-linux/**'
   workflow_dispatch:
   workflow_call:
 
@@ -18,18 +19,35 @@ jobs:
       with:
         submodules: true
 
-    - name: Setup Ninja
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v8.1.0
+
+    - name: Set up Ninja
       run: pip install ninja
 
-    - name: Setup CUDA
+    - name: Set up HIP (Linux)
       run: |
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
-        sudo dpkg -i cuda-keyring_1.1-1_all.deb
+        sudo mkdir -p /etc/apt/keyrings
+        wget https://repo.radeon.com/rocm/rocm.gpg.key -O - | \
+          gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+
+        sudo tee /etc/apt/sources.list.d/rocm.list << 'EOF'
+        deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/7.2.4 noble main
+        EOF
+
+        sudo tee /etc/apt/preferences.d/rocm-pin-600 << 'EOF'
+        Package: *
+        Pin: release o=repo.radeon.com
+        Pin-Priority: 600
+        EOF
+
         sudo apt-get update
-        sudo apt-get install -y cuda-nvcc-13-0 cuda-cudart-dev-13-0 cuda-nvrtc-dev-13-0
-        echo "PATH=/usr/local/cuda/bin${PATH:+:${PATH}}" >> $GITHUB_ENV
-        echo "CUDA_PATH=/usr/local/cuda" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/local/cuda/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
+        sudo apt-get install -y rocm-hip-runtime-dev
+
+        echo "PATH=/opt/rocm/bin${PATH:+:${PATH}}" >> $GITHUB_ENV
+        echo "ROCM_PATH=/opt/rocm" >> $GITHUB_ENV
+        echo "HIP_PATH=/opt/rocm" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/opt/rocm/lib:/opt/rocm/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Download VapourSynth headers
       run: |
@@ -41,10 +59,8 @@ jobs:
       run: cmake -S . -B build -G Ninja
         -D VS_INCLUDE_DIR="`pwd`/vapoursynth/include"
         -D CMAKE_BUILD_TYPE=Release
-        -D CMAKE_CXX_COMPILER=g++-12
-        -D CMAKE_CXX_FLAGS="-Wall -ffast-math"
-        -D CMAKE_CUDA_FLAGS="--threads 0 --use_fast_math --resource-usage -Wno-deprecated-gpu-targets"
-        -D CMAKE_CUDA_ARCHITECTURES="75;86-real;89-real;120-real"
+        -D CMAKE_CXX_FLAGS="-ffast-math"
+        -D CMAKE_HIP_ARCHITECTURES="gfx1010;gfx1011;gfx1012;gfx1030;gfx1031;gfx1032;gfx1033;gfx1034;gfx1035;gfx1036;gfx1100;gfx1101;gfx1102;gfx1103;gfx1200;gfx1201"
 
     - name: Build
       run: cmake --build build --config Release --verbose
@@ -52,18 +68,17 @@ jobs:
     - name: Install
       run: cmake --install build --prefix install
 
-    - name: Upload
+    - name: Build wheel
+      run: uv build --wheel
+
+    - name: Repair wheel
+      run: |
+        uvx --with patchelf auditwheel repair --strip dist/*.whl -w repaired_wheels
+        rm dist/*.whl
+        mv repaired_wheels/*.whl dist/
+
+    - name: Upload wheel
       uses: actions/upload-artifact@v7
       with:
-        name: vs-nlm-cuda-linux
-        path: install/lib/*.so
-
-  build-wheel:
-    name: Package Wheel (Linux)
-    needs: build-linux
-    uses: ./.github/workflows/wheel.yml
-    with:
-      os: ubuntu-24.04
-      artifact_name: vs-nlm-cuda-linux
-      artifact_path: install/lib
-      build_sdist: false
+        name: wheel-linux
+        path: dist/*.whl

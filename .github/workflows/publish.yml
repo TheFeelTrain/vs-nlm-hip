@@ -42,7 +42,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/vapoursynth-nlm-cuda
+      url: https://pypi.org/p/vapoursynth-nlm-hip
 
     permissions:
       id-token: write
@@ -55,20 +55,6 @@ jobs:
           pattern: wheel-*
           path: dist
           merge-multiple: true
-
-      - name: Download sdist
-        uses: actions/download-artifact@v8
-        with:
-          name: sdist
-          path: dist
-          merge-multiple: true
-        continue-on-error: true
-
-      - name: Download release assets
-        uses: actions/download-artifact@v8
-        with:
-          name: release-assets
-          path: release-assets
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
