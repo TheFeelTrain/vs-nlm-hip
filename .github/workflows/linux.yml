@@ -51,7 +51,7 @@ jobs:
 
     - name: Download VapourSynth headers
       run: |
-        wget -q -O vs.zip https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R57.zip
+        wget -q -O vs.zip https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R72.zip
         unzip -q vs.zip
         mv vapoursynth*/ vapoursynth
 
