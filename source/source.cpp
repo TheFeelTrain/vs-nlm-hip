@@ -628,11 +628,4 @@ VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vspapi) {
         "clip:vnode;",
         NLMeansCreate, nullptr, plugin
     );
-
-    auto getVersion = [](const VSMap *, VSMap * out, void *, VSCore *, const VSAPI *vsapi) {
-        vsapi->mapSetData(out, "version", VERSION, -1, dtUtf8, maReplace);
-        vsapi->mapSetInt(out, "hip_version", HIP_VERSION, maReplace);
-    };
-
-    vspapi->registerFunction("Version", "", "version:data;hip_version:int;", getVersion, nullptr, plugin);
 }
