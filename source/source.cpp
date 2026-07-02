@@ -608,7 +608,7 @@ VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vspapi) {
         "com.thefeeltrain.nlm_hip",
         "nlm_hip",
         "Non-local means denoise filter implemented in HIP",
-        VS_MAKE_VERSION(1, 0),
+        VS_MAKE_VERSION(VERSION_MAJOR, VERSION_MINOR),
         VAPOURSYNTH_API_VERSION, 0, plugin
     );
 

@@ -20,6 +20,12 @@ set_target_properties(vsnlm_hip PROPERTIES
 
 target_link_libraries(vsnlm_hip PRIVATE hip::host)
 
+if(WIN32)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" "[VapourSynth Manifest V1]\nvsnlm_hip\n")
+else()
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" "[VapourSynth Manifest V1]\nlibvsnlm_hip\n")
+endif()
+
 find_package(PkgConfig QUIET MODULE)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
@@ -33,7 +39,8 @@ if(PKG_CONFIG_FOUND)
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         target_include_directories(vsnlm_hip PRIVATE ${VS_INCLUDE_DIRS})
-        install(TARGETS vsnlm_hip LIBRARY DESTINATION ${VS_PLUGIN_DIR})
+        install(TARGETS vsnlm_hip LIBRARY DESTINATION "${VS_PLUGIN_DIR}/nlm_hip")
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" DESTINATION "${VS_PLUGIN_DIR}/nlm_hip")
     endif()
 endif()
 
@@ -47,6 +54,7 @@ if(NOT VS_FOUND)
     target_include_directories(vsnlm_hip PRIVATE ${VS_INCLUDE_DIR})
 
     install(TARGETS vsnlm_hip LIBRARY RUNTIME)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" DESTINATION .)
 endif()
 
 find_package(Git QUIET)
@@ -58,15 +66,25 @@ if(GIT_FOUND)
         OUTPUT_VARIABLE VCS_TAG
     )
     if(VCS_TAG)
-      string(STRIP ${VCS_TAG} VCS_TAG)
+        string(STRIP ${VCS_TAG} VCS_TAG)
     endif()
 endif()
 
 if(VCS_TAG)
     message(STATUS "vs-nlm-hip ${VCS_TAG}")
+    if(VCS_TAG MATCHES "v([0-9]+)(\\.([0-9]+))?")
+        set(VCS_MAJOR ${CMAKE_MATCH_1})
+        if(CMAKE_MATCH_3)
+            set(VCS_MINOR ${CMAKE_MATCH_3})
+        else()
+            set(VCS_MINOR 0)
+        endif()
+    endif()
 else()
     message(WARNING "unknown plugin version")
     set(VCS_TAG "unknown")
+    set(VCS_MAJOR 1)
+    set(VCS_MINOR 0)
 endif()
 
 configure_file(source/config.h.in config.h)
@@ -90,11 +108,3 @@ if(WIN32)
     endif()
   endif()
 endif()
-
-# Write VapourSynth Manifest
-if(WIN32)
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" "[VapourSynth Manifest V1]\nvsnlm_hip\n")
-else()
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" "[VapourSynth Manifest V1]\nlibvsnlm_hip\n")
-endif()
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/manifest.vs" DESTINATION .)
